@@ -10,21 +10,21 @@ class Vswitch < Formula
   on_macos do
     on_arm do
       url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-darwin-arm64.tar.gz"
-      sha256 "fd673d1a48b6a4a8da037d7030c0cbae6dc4438bd61c47ff91ebc11687cf6414"
+      sha256 "971fc9cadb63b86761e3e9e4ddcdcd1e8aa49d2b1ca39fa95ce758bd815bfbdc"
     end
     on_intel do
       url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-darwin-amd64.tar.gz"
-      sha256 "8b6a326f05ad77936f85af30c7bc3ae9fa3c53b3f8231eab3d3572bbf9d2f96b"
+      sha256 "1d164f668bb959f792c3c6ed0ba414c52b6f761211e2511506b4410bededc9d8"
     end
   end
   on_linux do
     on_arm do
       url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-linux-arm64.tar.gz"
-      sha256 "b065088d03b1571dfd02822d3acc66f5276795311b898705b35927c5505d2b55"
+      sha256 "b735efdb2070781d0f181cb886fd66b9fc0c8c25257cbcb5f03d535a14e08b5d"
     end
     on_intel do
       url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-linux-amd64.tar.gz"
-      sha256 "51eb8c4051c85c8f5ec07af594b0d3d593085930a954c68f0c06107a673ec822"
+      sha256 "9dcbe420e5c7bcd926891dde7ee36185c24326932a9e20209e179b88098292fb"
     end
   end
 
