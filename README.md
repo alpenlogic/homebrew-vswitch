@@ -345,8 +345,13 @@ rating. The number of available addresses is not a promise of call capacity.
 
 - **Stop:** `brew services stop vswitch`, or Ctrl+C in a manually started
   switch. Restarts end active calls; account and number registrations stay.
-- **Upgrade:** `brew update && brew upgrade vswitch`. Settings and data are
-  retained. Returning to an older version is not supported.
+- **Upgrade:** conclude active calls, then run
+  `brew update && brew upgrade vswitch && brew services restart vswitch`.
+  The restart loads the newly installed version; installing it alone leaves
+  the running process on the old version. For a manually started switch,
+  upgrade, stop it with Ctrl+C and relaunch the step 2 command instead of using
+  `brew services restart`. Settings and data are retained. Returning to an
+  older version is not supported.
 - **Logs:** transcripts and notes are in `$(brew --prefix)/var/vswitch/logs`.
   `vswitch-watch --all` follows every call and note; `vswitch-edit` browses
   past calls. Settings and license live in `$(brew --prefix)/etc/vswitch`.
