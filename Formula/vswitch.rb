@@ -4,27 +4,26 @@
 class Vswitch < Formula
   desc "Phone switch for AI agents (licensed beta)"
   homepage "https://github.com/alpenlogic/homebrew-vswitch"
-  version "0.1.0-beta.2"
   license :cannot_represent
 
   on_macos do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-darwin-arm64.tar.gz"
-      sha256 "971fc9cadb63b86761e3e9e4ddcdcd1e8aa49d2b1ca39fa95ce758bd815bfbdc"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-darwin-arm64.tar.gz"
+      sha256 "28ae1e313d05b81400b3435126ee34ca49f35e278809c463611a6f44a5a08e63"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-darwin-amd64.tar.gz"
-      sha256 "1d164f668bb959f792c3c6ed0ba414c52b6f761211e2511506b4410bededc9d8"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-darwin-amd64.tar.gz"
+      sha256 "da329fd48b4924cb0bef382c7bf48529cbc5fea1c5d52915a2569d97e37d39e7"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-linux-arm64.tar.gz"
-      sha256 "b735efdb2070781d0f181cb886fd66b9fc0c8c25257cbcb5f03d535a14e08b5d"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-linux-arm64.tar.gz"
+      sha256 "27d4e2505f977329f4693084468ac3b48eee8e89b29169cf3c586e447be1aff2"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.2/vswitch-0.1.0-beta.2-linux-amd64.tar.gz"
-      sha256 "9dcbe420e5c7bcd926891dde7ee36185c24326932a9e20209e179b88098292fb"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-linux-amd64.tar.gz"
+      sha256 "1321f8ef3723fb5f0cfe804534c489bb0fe9e17de58db25d0a8312aa5c6e8cba"
     end
   end
 
@@ -34,7 +33,7 @@ class Vswitch < Formula
     %w[vswitch-tail vswitch-log vswitch-watch vswitch-edit].each do |tool|
       (bin/tool).write_env_script libexec/tool, VSWITCH_LOGS: var/"vswitch/logs"
     end
-    pkgshare.install "README.md", "PROMPTS.md", "VERSION.txt", "vswitch.json", "skill"
+    pkgshare.install "README.md", "START-HERE.md", "PROMPTS.md", "VERSION.txt", "vswitch.json", "skill"
   end
 
   # The configuration and data live outside the keg, so upgrades and
@@ -70,8 +69,10 @@ class Vswitch < Formula
         brew services start vswitch
         curl -s http://127.0.0.1:8087/service
 
-      Then create your account and a number for each agent, and connect them:
+      Start here: numbered steps for you to set up two agents and watch a call:
         #{opt_pkgshare}/README.md
+      After the first call, build your team and add optional ring notifications:
+        #{opt_pkgshare}/START-HERE.md
     EOS
   end
 
