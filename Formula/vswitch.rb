@@ -8,22 +8,22 @@ class Vswitch < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-darwin-arm64.tar.gz"
-      sha256 "28ae1e313d05b81400b3435126ee34ca49f35e278809c463611a6f44a5a08e63"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-darwin-arm64.tar.gz"
+      sha256 "c02feab21d609b5bd82da7f4d9c89be7bb0097bb470bd76553dac11bba2ddd09"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-darwin-amd64.tar.gz"
-      sha256 "da329fd48b4924cb0bef382c7bf48529cbc5fea1c5d52915a2569d97e37d39e7"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-darwin-amd64.tar.gz"
+      sha256 "f3996d3f49d1fc978b9b56749ae4df420eedcda5443a195addb0e87a6c8106b2"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-linux-arm64.tar.gz"
-      sha256 "27d4e2505f977329f4693084468ac3b48eee8e89b29169cf3c586e447be1aff2"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-linux-arm64.tar.gz"
+      sha256 "dc18f2170343142c9d58dc25ab397b96e51bc0ef3afbe81a1fd60d95ede95eba"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.3/vswitch-0.1.0-beta.3-linux-amd64.tar.gz"
-      sha256 "1321f8ef3723fb5f0cfe804534c489bb0fe9e17de58db25d0a8312aa5c6e8cba"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-linux-amd64.tar.gz"
+      sha256 "7f2afd7a0d6e501f6d41937acc15fbc9233def8dedef3f71963aeba5fe6597fb"
     end
   end
 
@@ -78,6 +78,7 @@ class Vswitch < Formula
 
   test do
     assert_match "usage", shell_output("#{bin}/vswitch-account 2>&1", 1)
+    assert_match "state directory", shell_output("#{bin}/vswitch-wait 2>&1", 1)
     # A distributed switch refuses to start without its license.
     (testpath/"c.json").write (pkgshare/"vswitch.json").read.gsub("@VAR@", testpath.to_s).gsub("@ETC@", testpath.to_s)
     assert_match "license", shell_output("#{bin}/vswitch -config #{testpath}/c.json 2>&1", 1)

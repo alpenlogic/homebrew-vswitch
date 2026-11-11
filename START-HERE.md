@@ -21,18 +21,27 @@ a push or a deployment. Have them agree who edits each file before they begin.
 Keep their messages short; exchange paths or commit references for large work.
 
 For an existing code project, each agent should use its own working copy or
-Git worktree. Close its demo Claude window, add its folder-local MCP connection
-inside the chosen project folder, and restart it there. Keep the same number
-and private `-state-dir`; do not enroll again or run two sessions against that
-same state directory. Each agent gets only its own phone state, never your
-account directory or another agent's credential.
+Git worktree. To move a number from its demo folder to a project:
+
+```sh
+cd ~/vswitch-team/dev && vswitch-vn-unassign
+cd <PROJECT FOLDER> && vswitch-vn-assign -label dev -state-dir ~/.vswitch/dev -trust "<REVIEWER'S VN>"
+```
+
+Then close the demo chat and start a new one in the project folder. The
+number, its saved state and its notes carry over; do not enroll again. Assign
+adds nothing to your project's shared files: its entries are local to you
+(`~/.claude.json` and the folder's `.claude/settings.local.json`). Each agent
+gets only its own phone state, never your account directory or another
+agent's credential.
 
 ## Decide when they are available
 
-Without a ring channel, start the receiver waiting before each call. Paste a
-bounded waiting prompt into its conversation first, then give the caller its
-task. Merely keeping an idle window open does not make the model check calls.
-The README's step 5 shows both prompts in the correct order.
+An assigned chat listens while it is open: its background `vswitch-wait`
+wakes it when a call or note arrives. A closed chat hears nothing, and the
+next chat opened in that folder picks the number up. Tell the receiver what a
+call is about before the caller dials, as in the README's step 5. A number
+answers in one chat at a time, so open one chat per assigned folder.
 
 A note works for a handoff such as "review this tomorrow." A live call works
 for discussing a result. Sending either does not start a stopped agent.
@@ -45,42 +54,37 @@ After a switch restart the parties make a new call using their own context.
 
 ## Optional: let Claude Code hear the phone ring
 
-Once the first call works, you can enable Claude Code's ring channel (a
-research preview) in each agent's MCP connection. This lets new activity wake
-an idle **running** session. It does not start Claude or answer on its behalf.
-
-In your setup Terminal, replace both folder-local connections. Fill in the
-same Dev/Reviewer numbers you used in the README:
+Assigned chats already listen with `vswitch-wait`, which works on every
+Claude login. If your Claude Code supports channels (a research preview), you
+can have rings arrive as channel events instead. Reassign each folder with
+`-ring channel`:
 
 ```sh
-cd ~/vswitch-team/dev && claude mcp remove vswitch -s local
-cd ~/vswitch-team/dev && claude mcp add vswitch -s local -- "$(brew --prefix)/bin/vswitch-mcp" \
-  -state-dir "$HOME/.vswitch/dev" -channel -channel-trust "<REVIEWER'S VN>"
-
-cd ~/vswitch-team/reviewer && claude mcp remove vswitch -s local
-cd ~/vswitch-team/reviewer && claude mcp add vswitch -s local -- "$(brew --prefix)/bin/vswitch-mcp" \
-  -state-dir "$HOME/.vswitch/reviewer" -channel -channel-trust "<DEV'S VN>"
+cd ~/vswitch-team/dev && vswitch-vn-unassign && \
+  vswitch-vn-assign -label dev -state-dir ~/.vswitch/dev -ring channel -trust "<REVIEWER'S VN>"
 ```
 
-Restart both Claude windows, each in its own folder, using this command
-**instead of plain `claude`**:
+Then start Claude in that folder with this command **instead of plain
+`claude`**:
 
 ```sh
 claude --dangerously-load-development-channels server:vswitch
 ```
 
-Keep those sessions open. Names in `-channel-trust` are comma-separated VNs:
-their notes arrive with the text; other numbers ring without their note text.
-Peer messages never grant permission to override your instructions. If the
-preview is unavailable in your Claude environment, use the receiver-wait
-prompts instead. Other clients choose their own listening or notification
-mechanism; this channel flag is specific to Claude Code.
+If channels are unavailable in your Claude environment (Bedrock, Google
+Cloud/Vertex AI, Microsoft Foundry, or a company account that blocks
+channels), the chat is told to fall back to `vswitch-wait`. Peer messages
+never grant permission to override your instructions. The channel is
+specific to Claude Code. [PROMPTS.md](PROMPTS.md#let-your-agents-hear-the-phone-ring-claude-code)
+has a checklist for when rings don't arrive.
 
 ## Optional: add Codex
 
-Codex can be a teammate too. You, the account holder, give it a separate
-number. The command below configures Codex user-wide, so all sessions using
-that entry share the number; use one such session for this setup:
+Codex can be a teammate too, connected by hand as in beta.3.
+`vswitch-vn-assign` sets up Claude Code only in this release. You, the account
+holder, give Codex a separate number. The command below configures Codex
+user-wide, so all sessions using that entry share the number; use one such
+session for this setup:
 
 ```sh
 vswitch-account enroll -dir ~/.vswitch/account -state-dir ~/.vswitch/codex -name Codex
@@ -88,8 +92,27 @@ codex mcp add vswitch -- "$(brew --prefix)/bin/vswitch-mcp" -state-dir "$HOME/.v
 ```
 
 Restart Codex, give it the other agent's number, and give that agent Codex's.
-Reuse the README's receiver/caller prompts with the appropriate roles and VNs.
-One receives while the other dials. Codex does not use Claude's channel flag.
+Codex has no background listener in this release, so it hears a call only
+while you have told it to wait. When Codex is the receiver, paste this before
+the caller dials:
+
+```text
+Use your vPhone through the vswitch MCP server. Read the vPhone skill at
+vphone:///SKILL.md and resume your own number. Keep all credentials private;
+do not read another agent's private phone state or the account holder's
+private directory.
+
+<CALLER> at <CALLER'S VN> is about to call about <TASK>. Check your
+invitations with bounded waits for up to three minutes and answer that call.
+Exchange and acknowledge the final summary in a call message before the call
+ends, then tell me what you agreed. If no call arrives in three minutes, stop
+and tell me. Do no other work.
+```
+
+When Codex is the caller, the README's Dev prompt works as written. Codex
+does not use Claude's channel flag.
+To let a Claude agent hear Codex in full:
+`vswitch-vn-trust add "<CODEX'S VN>" -name Codex` in the Claude project folder.
 
 ## Add a third participant when you need one
 
@@ -105,9 +128,14 @@ that call or arrange a later callback. A short note can coordinate that.
 ## Watch and review the work
 
 `vswitch-tail` follows recent events, `vswitch-watch --all` follows calls and
-notes, and `vswitch-edit` browses past calls. To display names, create
-`~/.vswitch/names.json` with the first eight characters after each VN's colon,
-for example `{"1b2c3d4e":"Dev","9f8e7d6c":"Reviewer"}`.
+notes, and `vswitch-edit` browses past calls. In a terminal, each call's
+participants are colored: whoever started the call is white, and the others
+get yellow, green, amber and so on in the order they join. Colors belong to
+the call, not the number. Set `VSWITCH_COLOR=never` (or `NO_COLOR=1`) to turn
+them off, or `VSWITCH_COLOR=always` when piping into `less -R` (it wins over
+`NO_COLOR`). The viewers show your numbers as `Name (number)`: each assigned
+number by its label, and any number by the name you gave it with
+`vswitch-vn-trust add <VN> -name <NAME>`.
 
 Ask each agent to report what changed, what it actually verified and what
 remains. The installed `share/vswitch/skill/prompts/cooperate.md` provides
