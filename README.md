@@ -1,12 +1,76 @@
 # vSwitch: get two agents working together
 
-## What's new in beta.4
+## What's new in beta.6
+
+**What an agent meant to say now reaches the other side, even when the call
+doesn't.** Agents run one task at a time, so a call often lands mid-turn and
+rings out. Beta.6 makes delivery not depend on catching the other agent at
+the right moment, and takes the guesswork out of when to answer.
+
+| Change | What it means |
+| --- | --- |
+| **The message rides with the call** | An agent can put what it wants to say on the call itself. If nobody answers, the line is busy, or the caller gives up first, the switch leaves it for them as the caller's note, and the caller is told whether it was left. If they answer, the message is dropped and they talk. |
+| **Trusted callers are pre-approved** | The numbers on an agent's trust list are the ones it answers without asking you. Calls from other numbers are not answered unless its task expects that caller. |
+| **30-second ring** | Calls ring for 30 seconds by default, and the agent is told so. |
+| **Ended calls stay readable a while** | After a call ends, the people still on it at the end can read it back until nobody has looked at it for 10 minutes (`callContextIdleSeconds` in the switch config). Notes about a call can point to it. |
+| **Clearer missed calls** | A missed call says why: the line was busy, it rang out, or the caller hung up first. |
+
+Beta.5 was not published, so its changes arrive in this release too:
+
+| Change | What it means |
+| --- | --- |
+| **Missed calls** | A call that rings unanswered leaves the person called a missed-call record ("call back, or leave a note") in their inbox. |
+| **Busy goes to a message** | Calling a number that is on another call fails at once with *busy*. The person called gets a missed call saying you rang while they were on another call, and you are told you can leave a note. Redialing within a minute leaves one record, not many. |
+| **Calls stop ringing on their own** | The switch ends a call nobody answers after 30 seconds, so agents no longer watch the clock. The caller is told *no answer* and can leave a note. Change it per number with `vswitch-vn-assign -ring-timeout 20s` (5 seconds to 5 minutes), or per call. |
+| **Checked at every turn** | At the start of each turn, an assigned Claude Code chat is told, by count only, about calls, missed calls and notes waiting for it, even if its listener stopped. When nothing is waiting, nothing is added. |
+| **Keeps listening** | At the end of a turn, a chat whose listener has stopped is asked to start it again. |
+| **After sleep** | When the computer wakes from sleep, listeners reconnect at once, recheck, and tell the agent about the gap ("a possible sleep or clock change between 02:10 and 03:40") so it can check what its teammates did meanwhile. |
+| **Codex with one command** | `vswitch-codex` starts Codex CLI 0.167.1 with calls, notes and wake-ups in an assigned folder (new path: not yet run end to end on a live chat) ([details](START-HERE.md#optional-add-codex)). Plain `codex` still gets configuration only. |
+| **`vswitch-doctor`** | One read-only report you can email when setup goes wrong ([details](#if-something-gets-stuck)). |
+| **Notes in italics** | `vswitch-tail`, `vswitch-log` and `vswitch-watch` show notes in italics, so they stand apart from calls. |
+
+Recovery after sleep and the one-command Codex launch are tested in code but
+have not yet been checked on a live chat.
+
+### Upgrading from beta.4
+
+Your account, numbers, trust lists and unread notes carry over. In Terminal:
+
+```sh
+brew update && brew upgrade alpenlogic/vswitch/vswitch
+vswitch-start -restart
+vswitch-vn-list
+```
+
+Then **re-assign each project folder** so it gets the new hooks. Close that
+folder's chats first. Use the label and state directory `vswitch-vn-list`
+shows, and the same `-trust` numbers as before:
+
+```sh
+cd "<FOLDER>" && vswitch-vn-unassign && vswitch-vn-assign -label "<LABEL>" -state-dir "<STATE DIR>" -trust "<TEAMMATE'S VN>"
+```
+
+Use the **same existing state directory**: this is not a new enrollment, and
+it changes no tool permissions. Unassigning keeps the number, its
+credentials, trust list and what it has already processed. Add
+`-ring-timeout 20s` if you want that number's calls to ring for a different
+time than 30 seconds; the flag applies when assigning, so to change it later
+edit `ringTimeoutSeconds` in the state directory's `settings.json`, or
+unassign and assign again with the flag. Then start a new chat in the folder. You don't need to tell the
+agent anything new: its start message explains busy, missed calls, the
+ring timeout, leaving a message with a call and which callers to answer. For a **Codex** folder, add `-app codex` to **both** commands
+(`vswitch-vn-unassign -app codex && vswitch-vn-assign -app codex …`);
+without it, unassign looks for the folder's Claude assignment. Then start
+Codex with `vswitch-codex`.
+
+## What was new in beta.4
 
 **Give a project its own agent number with one command.** New in this
 release:
 
 | Command | What it does |
 | --- | --- |
+| `vswitch-start` | Starts the switch and keeps it running, with no administrator rights. It uses a Homebrew login service where it can, and otherwise runs the switch in the background, for example on work computers that block login services. `-status`, `-stop` and `-restart` manage it. |
 | `vswitch-vn-assign` | Run it in a project folder to give the agent app there one of your numbers. It shows exactly what it will add and asks first. After that, every new chat in that folder is told its number and starts listening on its own. You don't need `claude mcp add` or a listening prompt. |
 | `vswitch-vn-unassign` | Removes exactly what assign added and keeps anything you changed. The number stays enrolled, ready to assign again. |
 | `vswitch-vn-list` | Shows which number is assigned to which app and project. |
@@ -104,23 +168,21 @@ command above. If you received a file instead, copy it to that same location.
 Start the switch:
 
 ```sh
-brew services start vswitch
+vswitch-start
 curl -fsS http://127.0.0.1:8087/service
 ```
 
 **You should see:** a JSON response containing `"networkType":"private"`
 and `"developmentTracing":true`. Leave the switch running for the next steps.
 
-On Linux **without systemd**, `brew services` cannot manage the process.
-Instead, run this in a separate Terminal window and leave that window open:
-
-```sh
-"$(brew --prefix)/bin/vswitch" -config "$(brew --prefix)/etc/vswitch/vswitch.json" -verbose=false
-```
-
-Use the `curl` command above in your setup window to check it. Ctrl+C in the
-switch's window stops this manually started process. For background startup
-across logins, use your Linux environment's service manager.
+`vswitch-start` needs no administrator rights and picks the way to run
+the switch for you. Where Homebrew can add a login service, it uses one, and
+the switch starts again whenever you log in. Where it can't (a work computer
+that blocks login services, or Linux without systemd), it runs the switch in
+the background instead: the switch keeps running after you close the window,
+until you log out or restart. Then run `vswitch-start` again, or run
+`vswitch-start -at-login` once so that each new Terminal window starts it if
+it isn't running. `vswitch-start -status` shows which way it is running.
 
 ## Step 3. Create your account and two numbers
 
@@ -160,8 +222,8 @@ cd ~/vswitch-team/reviewer && vswitch-vn-assign -label reviewer -state-dir ~/.vs
 ```
 
 **You should see:** each command lists what it will add (a vSwitch connection
-for that folder only, and a start and end hook in the folder's
-`.claude/settings.local.json`), then asks you to confirm. After you answer
+for that folder only, and start, turn-start, turn-end and end hooks in the
+folder's `.claude/settings.local.json`), then asks you to confirm. After you answer
 `y`, it prints `Done` and the commands to free or undo the assignment. Keep
 those for later. `vswitch-vn-list` shows both assignments.
 
@@ -296,7 +358,9 @@ The agent needs both a notification mechanism and your instruction to answer.
 A Claude Code chat in a folder set up with `vswitch-vn-assign` starts the
 background listener `vswitch-wait` itself when it opens, and is told to
 answer calls and read notes within your task. That works on every Claude
-login. Alternatively, the optional
+login. An agent can't answer in the middle of a turn, so a call can still
+go unanswered. Then it becomes a missed call, and the agent is told about it
+at the start of its next turn, whether or not its listener is running. Alternatively, the optional
 [ring-channel setup](START-HERE.md#optional-let-claude-code-hear-the-phone-ring)
 wakes a running session through Claude Code channels. Channels are a
 [Claude Code research preview](https://code.claude.com/docs/en/channels), and
@@ -316,10 +380,11 @@ notes too. Calls and notes do not authorize work outside the task I gave you.
 Stop when the time is up and tell me what remains.
 ```
 
-The ring does not answer by itself or start a closed agent. For other clients,
-use a supported host notification adapter or the bounded receiver-wait prompt.
-Our development Codex ring bridge is an operator setup, not an adapter included
-in this Homebrew package. Without one, ask Codex to wait for calls with the
+The ring does not answer by itself or start a closed agent. Codex CLI 0.167.1
+started with `vswitch-codex` in an assigned folder is woken by calls and notes
+and checks its inbox at the start of each turn
+([setup](START-HERE.md#optional-add-codex)). For other clients, or plain
+`codex`, ask the agent to wait for calls with the
 [bounded receiver prompt](START-HERE.md#optional-add-codex).
 The switch itself does not start models or manage provider usage limits.
 
@@ -337,7 +402,11 @@ create another number or call anyone just because you checked messages.
 The MCP tools are `vphone_inbox` for notes, `vphone_invitations` for ringing
 calls, and `vphone_ack` for saving processed cursors. Notes remain in the local
 developer switch when an agent closes; an invitation is a currently ringing
-call. The inbox is not a complete missed-call register. Protected production
+call. A call that rang unanswered, or was refused because the number was on
+another call, between two numbers on this switch also leaves a missed-call
+entry; calls through another switch do not, so the inbox is not a complete
+missed-call register. Assigned Claude Code chats don't need this prompt for
+routine checks: each turn starts with a one-line count of anything waiting. Protected production
 voicemail is a future feature, separate from these developer contact notes.
 
 ### Can I run more than one switch?
@@ -388,27 +457,32 @@ rating. The number of available addresses is not a promise of call capacity.
 
 ## If something gets stuck
 
+Run `vswitch-doctor > vswitch-report.txt` first. It checks the switch, your
+numbers, their assignments, trust, open chats and their listeners, lists what
+it finds at the top with the fix for each, and leaves out credentials,
+account details and message text, so you can send the file to whoever helps
+you. It changes nothing.
+
 | What you see | What to do |
 | --- | --- |
-| The switch does not answer | Check the license location and `tail -20 "$(brew --prefix)/var/log/vswitch.log"`. For manual startup, read its Terminal output. |
+| The switch does not answer | Run `vswitch-start -status`, check the license location, and read `tail -20 "$(brew --prefix)/var/log/vswitch.log"`. |
 | Port 8087 is already in use | Change `address` in `$(brew --prefix)/etc/vswitch/vswitch.json`, restart, and add `-switch-url http://127.0.0.1:8187` (using your chosen port) to every account and MCP command. |
 | Claude has no vSwitch tools | Start it from its own team folder; check `/mcp` and `vswitch-vn-list`, then start a new chat there. |
 | Claude says the number is in use by another chat | One chat holds a number at a time. Close the other chat in that folder, or turn off its `vswitch` server in `/mcp`. If that chat already closed without ending cleanly, run the `vswitch-vn-release` command it gives you. Then start a new chat. |
 | `vswitch-vn-assign` refuses because a `vswitch` MCP server already exists | That folder has an entry you added by hand. Remove it with `claude mcp remove vswitch -s local`, or pick another name with `-server-name`. |
 | Both agents report the same number | Check `vswitch-vn-list`: each folder needs its own assignment and number. |
 | A call rings without an answer | Run the receiver prompt first and keep both sessions running, or set up the ring channel: see "Let your agents hear the phone ring" in [PROMPTS.md](PROMPTS.md), including its checklist. |
+| An agent answered once, then missed later calls and notes | It didn't start its background listener again after waking. Projects assigned with this release have an end-of-turn hook that asks the agent to restart it; for an older assignment, run `vswitch-vn-assign` again in that folder, or tell the agent: "Start your vswitch-wait background listener again, and restart it after every call or note." Notes left meanwhile are still in its inbox. |
+| A call came while the agent was busy | An agent can't be interrupted mid-turn. With this release the switch leaves a missed-call record (for calls between numbers on this switch) and the agent calls back when free. The switch ends an unanswered call after 30 seconds (the number's ring timeout), so callers need not time it. |
 | An enrollment is refused | Check the license's number allowance in `/service`; do not create more accounts or replacement identities to retry. |
 
 ## Keep for later
 
-- **Stop:** `brew services stop vswitch`, or Ctrl+C in a manually started
-  switch. Restarts end active calls; account and number registrations stay.
+- **Stop:** `vswitch-start -stop`. Restarts end active calls; account and number registrations stay.
 - **Upgrade:** conclude active calls, then run
-  `brew update && brew upgrade vswitch && brew services restart vswitch`.
+  `brew update && brew upgrade vswitch && vswitch-start -restart`.
   The restart loads the newly installed version; installing it alone leaves
-  the running process on the old version. For a manually started switch,
-  upgrade, stop it with Ctrl+C and relaunch the step 2 command instead of using
-  `brew services restart`. Settings and data are retained. Returning to an
+  the running process on the old version. Settings and data are retained. Returning to an
   older version is not supported.
 - **Logs:** transcripts and notes are in `$(brew --prefix)/var/vswitch/logs`.
   `vswitch-watch --all` follows every call and note; `vswitch-edit` browses

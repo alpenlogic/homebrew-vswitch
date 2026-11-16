@@ -43,6 +43,22 @@ next chat opened in that folder picks the number up. Tell the receiver what a
 call is about before the caller dials, as in the README's step 5. A number
 answers in one chat at a time, so open one chat per assigned folder.
 
+An agent busy with a turn, or already on a call, can't pick up. That's
+expected:
+
+- A call rings for 30 seconds, then the switch ends it as *no answer*. The
+  caller is told and can leave a note. Set a different time for a number with
+  `vswitch-vn-assign -ring-timeout 20s` when you assign it (5 seconds to 5
+  minutes); to change it later, edit `ringTimeoutSeconds` in the number's
+  `settings.json`.
+- Calling a number that is on another call is refused at once as *busy*, and
+  the caller can leave a note.
+- Either way, the person called gets a missed-call record, and an assigned
+  Claude Code chat is told about it, and about any notes, at the start of its
+  next turn.
+- After the computer sleeps, listeners reconnect and tell the agent about the
+  gap, so it checks what its teammates did meanwhile.
+
 A note works for a handoff such as "review this tomorrow." A live call works
 for discussing a result. Sending either does not start a stopped agent.
 Watch provider usage and leave enough capacity to checkpoint and report.
@@ -80,21 +96,52 @@ has a checklist for when rings don't arrive.
 
 ## Optional: add Codex
 
-Codex can be a teammate too, connected by hand as in beta.3.
-`vswitch-vn-assign` sets up Claude Code only in this release. You, the account
-holder, give Codex a separate number. The command below configures Codex
-user-wide, so all sessions using that entry share the number; use one such
-session for this setup:
+Codex can be a teammate too. You, the account holder, give it its own number
+and its own folder:
 
 ```sh
 vswitch-account enroll -dir ~/.vswitch/account -state-dir ~/.vswitch/codex -name Codex
+mkdir -p ~/vswitch-team/codex
+cd ~/vswitch-team/codex && vswitch-vn-assign -app codex -label codex -state-dir ~/.vswitch/codex -trust "<DEV'S VN>"
+```
+
+Review the project and its hooks in Codex (`/hooks`); setup never grants
+trust for you. Then start Codex in that folder with:
+
+```sh
+cd ~/vswitch-team/codex && vswitch-codex
+```
+
+`vswitch-codex` supports **Codex CLI 0.167.1** and refuses other versions.
+It starts Codex together with a private helper so calls and notes wake the
+chat, and each turn starts by checking the inbox. Closing that Codex window
+stops the helper; nothing keeps running in the background. Pass other Codex
+arguments after `--`, for example `vswitch-codex -- resume <THREAD ID>`.
+This launch is new in beta.5. Its parts are tested, and Codex's wake-up was
+shown working in our call tests, but the one-command launch had not yet been
+run end to end on a live chat when this guide was written. Please report
+anything odd with `vswitch-doctor`.
+
+Codex may ask its approval reviewer before answering a call. It doesn't need
+to: answering is pre-approved for numbers on the trust list
+(`vswitch-vn-trust`), and `vphone_answer` itself refuses any other caller
+unless the call includes `untrusted: true`. If Codex lets you allow a tool
+only when its arguments match, allow `vphone_answer` calls that don't set
+`untrusted`. If it can only allow a tool outright, keep the reviewer: an
+outright allow would also cover untrusted calls.
+
+Started as plain `codex`, the folder is configured but Codex gets no vSwitch
+tools or wake-ups. In that case, or with another Codex version, connect it by
+hand as in beta.3 instead of assigning the folder. This configures Codex
+**user-wide**, so every Codex session using that entry shares the number;
+use only one such session at a time:
+
+```sh
 codex mcp add vswitch -- "$(brew --prefix)/bin/vswitch-mcp" -state-dir "$HOME/.vswitch/codex"
 ```
 
-Restart Codex, give it the other agent's number, and give that agent Codex's.
-Codex has no background listener in this release, so it hears a call only
-while you have told it to wait. When Codex is the receiver, paste this before
-the caller dials:
+Such a Codex hears a call only while you have told it to wait. When it is the
+receiver, paste this before the caller dials:
 
 ```text
 Use your vPhone through the vswitch MCP server. Read the vPhone skill at
@@ -109,6 +156,7 @@ ends, then tell me what you agreed. If no call arrives in three minutes, stop
 and tell me. Do no other work.
 ```
 
+Either way, give Codex the other agent's number and give that agent Codex's.
 When Codex is the caller, the README's Dev prompt works as written. Codex
 does not use Claude's channel flag.
 To let a Claude agent hear Codex in full:

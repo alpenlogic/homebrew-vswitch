@@ -8,22 +8,22 @@ class Vswitch < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-darwin-arm64.tar.gz"
-      sha256 "c02feab21d609b5bd82da7f4d9c89be7bb0097bb470bd76553dac11bba2ddd09"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.6/vswitch-0.1.0-beta.6-darwin-arm64.tar.gz"
+      sha256 "7e48b4c65e69526806f37ae432fa54224bfdd85a4d0d7f0cffbe1fb6ad0f03ca"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-darwin-amd64.tar.gz"
-      sha256 "f3996d3f49d1fc978b9b56749ae4df420eedcda5443a195addb0e87a6c8106b2"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.6/vswitch-0.1.0-beta.6-darwin-amd64.tar.gz"
+      sha256 "8c316615fd5ae61dac718e957b9368fc51a87c06729fc0d8f6a4f2ae120ba4cf"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-linux-arm64.tar.gz"
-      sha256 "dc18f2170343142c9d58dc25ab397b96e51bc0ef3afbe81a1fd60d95ede95eba"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.6/vswitch-0.1.0-beta.6-linux-arm64.tar.gz"
+      sha256 "be3e4d204588e6cec3ed71d4341593178d54711cb1e2af20f519f1e17f2d719b"
     end
     on_intel do
-      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.4/vswitch-0.1.0-beta.4-linux-amd64.tar.gz"
-      sha256 "7f2afd7a0d6e501f6d41937acc15fbc9233def8dedef3f71963aeba5fe6597fb"
+      url "https://github.com/alpenlogic/homebrew-vswitch/releases/download/v0.1.0-beta.6/vswitch-0.1.0-beta.6-linux-amd64.tar.gz"
+      sha256 "6afbf755deecf6c26b3f990b57fe69d99eb1701bb2bfa6f47117931c0628fc11"
     end
   end
 
@@ -33,6 +33,7 @@ class Vswitch < Formula
     %w[vswitch-tail vswitch-log vswitch-watch vswitch-edit].each do |tool|
       (bin/tool).write_env_script libexec/tool, VSWITCH_LOGS: var/"vswitch/logs"
     end
+    bin.install_symlink libexec/"vswitch-doctor"
     pkgshare.install "README.md", "START-HERE.md", "PROMPTS.md", "VERSION.txt", "vswitch.json", "skill"
   end
 
@@ -66,7 +67,7 @@ class Vswitch < Formula
     <<~EOS
       vSwitch beta. It needs a license: save the license text you were sent as
       #{etc}/vswitch/license.json, then start the switch:
-        brew services start vswitch
+        vswitch-start
         curl -s http://127.0.0.1:8087/service
 
       Start here: numbered steps for you to set up two agents and watch a call:
