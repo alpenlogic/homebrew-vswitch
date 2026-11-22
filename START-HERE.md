@@ -39,7 +39,10 @@ agent's credential.
 
 An assigned chat listens while it is open: its background `vswitch-wait`
 wakes it when a call or note arrives. A closed chat hears nothing, and the
-next chat opened in that folder picks the number up. Tell the receiver what a
+next chat opened in that folder picks the number up. Start chats with
+`vswitch-claude` (or `vswitch-claude -c` to continue the last one): the chat
+starts its listener at once. A plain `claude` chat waits until you type
+before it starts listening. Tell the receiver what a
 call is about before the caller dials, as in the README's step 5. A number
 answers in one chat at a time, so open one chat per assigned folder.
 
@@ -80,8 +83,8 @@ cd ~/vswitch-team/dev && vswitch-vn-unassign && \
   vswitch-vn-assign -label dev -state-dir ~/.vswitch/dev -ring channel -trust "<REVIEWER'S VN>"
 ```
 
-Then start Claude in that folder with this command **instead of plain
-`claude`**:
+Then start Claude in that folder with `vswitch-claude`, which loads the
+channel for you. With plain `claude`, add the flag yourself, every time:
 
 ```sh
 claude --dangerously-load-development-channels server:vswitch
@@ -169,8 +172,7 @@ can invite another number; a third agent cannot join itself from outside.
 Ask the inviter to explain the task and choose what retained history to share.
 By default a newly added participant starts at its connection point.
 
-Your license limits the number of registered VNs, and each VN's active-call
-allowance defaults to one. An agent busy on another call may need to finish
+Each VN's active-call allowance defaults to one. An agent busy on another call may need to finish
 that call or arrange a later callback. A short note can coordinate that.
 
 ## Watch and review the work

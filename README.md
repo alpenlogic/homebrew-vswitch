@@ -1,6 +1,34 @@
 # vSwitch: get two agents working together
 
-## What's new in beta.6
+## What's new in beta.7
+
+**Agents pick up where they left off, and no license is needed.** After a
+restart, an agent's number, assignment and unread notes are kept, and one
+command starts its chat already listening. A call in progress when the switch
+restarts still ends; the agents call again.
+
+| Change | What it means |
+| --- | --- |
+| **No license** | The switch runs without a license and with no limit on numbers. A `license.json` left by an earlier beta is kept but not checked; the switch log says so once at startup. An administrator who wants the old limits can turn them back on with `requireLicense`. |
+| **`vswitch-claude`** | Starts Claude Code in an assigned folder with its listener already running: `vswitch-claude`, or `vswitch-claude -c` to continue the last chat. It loads the ring channel when the folder uses one. |
+| **`vswitch-wait -here`** | One listen command per folder: it finds the folder's number and the chat by itself. |
+| **A quieter listener** | After a possible sleep with nothing new, the listener keeps waiting instead of stopping, so the chat is no longer asked again and again to restart it. The restart reminder is now one short line. |
+| **Notes and messages between two switches** (experimental) | Two private switches joined by a trunk can now leave each other's numbers notes. A note is kept on the recipient's switch, and the sender is told if it was not sent or if its delivery is unknown. When a call between switches rings out, the recipient's switch keeps the call's message as a note, records the missed call, and tells the caller what it kept ([details](#can-i-run-more-than-one-switch)). |
+
+### Upgrading from beta.6
+
+Your account, numbers, trust lists, assignments and unread notes carry over,
+and you don't need to re-assign folders. In Terminal:
+
+```sh
+brew update && brew upgrade alpenlogic/vswitch/vswitch
+vswitch-start -restart
+```
+
+Then start Claude Code in each assigned folder with `vswitch-claude -c` to
+continue where it left off, already listening.
+
+## What was new in beta.6
 
 **What an agent meant to say now reaches the other side, even when the call
 doesn't.** Agents run one task at a time, so a call often lands mid-turn and
@@ -76,7 +104,8 @@ release:
 | `vswitch-vn-list` | Shows which number is assigned to which app and project. |
 | `vswitch-vn-trust` | Chooses which numbers an agent hears in full, and what to call them. `add <number> -name Reviewer`, `remove <number>` and `list` take effect at the next ring, with no restart. |
 | `vswitch-vn-release` | Frees a number still held by a chat that closed without ending cleanly, such as a closed terminal or a crash. |
-| `vswitch-wait` | A background listener that uses no model tokens. Assigned chats start it themselves. It also works where Claude Code channels don't: Amazon Bedrock, Google Cloud (Vertex AI), Microsoft Foundry, or accounts that block channels. |
+| `vswitch-claude` | Starts Claude Code in an assigned folder already listening: `vswitch-claude`, or `vswitch-claude -c` to continue the last chat. It loads the channel when the folder rings by channel. Plain `claude` still works; it starts listening once you type. |
+| `vswitch-wait` | A background listener that uses no model tokens. In an assigned chat, `vswitch-wait -here` finds the folder's number and the chat by itself. Assigned chats start it themselves. It also works where Claude Code channels don't: Amazon Bedrock, Google Cloud (Vertex AI), Microsoft Foundry, or accounts that block channels. |
 
 - **Claude Code.** `vswitch-vn-assign` sets up Claude Code projects. Codex
   still connects by hand, as in beta.3
@@ -110,15 +139,14 @@ own numbers, and watch them complete a small task. Both sessions can use your
 existing Claude subscription; you do not need two AI providers. You can add
 Codex or more agents later. No Docker is needed.
 
-**Invitation-only developer beta:** you need the license sent to you. This
-beta keeps call transcripts and notes locally so you can watch your agents.
-Your agents still use their own AI providers as usual. Please keep your
-license and credentials private.
+**Developer beta:** this beta keeps call transcripts and notes locally so
+you can watch your agents. Your agents still use their own AI providers as
+usual. No license is needed. Please keep your credentials private.
 
 ## Before you begin
 
 You need Homebrew 7 or newer (`brew --version`), Claude Code installed and
-signed in, Python 3 for the viewer, and a license allowing at least two numbers.
+signed in, and Python 3 for the viewer.
 This guide works on macOS and Linux. Windows through WSL is not yet tested;
 native Windows is not supported.
 
@@ -150,20 +178,11 @@ If it refuses an untrusted formula, run
 `brew trust --formula alpenlogic/vswitch/vswitch`, then retry the install.
 If Python is missing, install it with `brew install python`.
 
-## Step 2. Save your license and start the switch
+## Step 2. Start the switch
 
-Copy **only the license JSON** from the message you received. On a Mac, save
-the copied text with:
-
-```sh
-pbpaste > "$(brew --prefix)/etc/vswitch/license.json"
-chmod 600 "$(brew --prefix)/etc/vswitch/license.json"
-```
-
-On Linux, save the JSON at that location using your text editor. For example,
-if `nano` is installed, run `nano "$(brew --prefix)/etc/vswitch/license.json"`,
-paste, save with Ctrl+O then Enter, and exit with Ctrl+X. Run the `chmod`
-command above. If you received a file instead, copy it to that same location.
+No license is needed. If an earlier beta left a `license.json` in
+`$(brew --prefix)/etc/vswitch`, it is kept but no longer checked; the switch
+log says so once at startup.
 
 Start the switch:
 
@@ -333,8 +352,7 @@ vSwitch number and private phone state. This walkthrough uses two Claude Code
 sessions on your existing account. Their work shares that provider's usage
 limits. People who already use several providers can mix compatible clients.
 
-Your **vSwitch license** permits running the switch and limits its registered
-numbers. Your **AI provider subscription** supplies the agents' model access.
+Your **AI provider subscription** supplies the agents' model access.
 A phone number is neither a new AI subscription nor extra model capacity.
 
 ### Can I use Claude Code, Codex or GitHub Copilot?
@@ -412,15 +430,52 @@ voicemail is a future feature, separate from these developer contact notes.
 ### Can I run more than one switch?
 
 Yes, as independent instances with separate configurations and data directories,
-different listening ports when sharing a machine, and a valid license for each.
+and different listening ports when sharing a machine.
 The Homebrew service example manages one instance; a multiple-instance setup
 needs its own startup configuration. Each agent connection must point to the
 intended switch and keep that identity's state separate.
 
-Numbers belong to their switch. **Switch-to-switch federation is not yet
-implemented:** starting a second switch does not let its numbers call the
-first one's numbers. Use one switch for teammates who need to call each other
-in this beta. Running several switches does not replicate or recover calls.
+Numbers belong to their switch. Starting a second switch does not by itself
+let its numbers call the first one's numbers. Running several switches does
+not replicate or recover calls.
+
+**Trunks (experimental).** A `trunk` block in each switch's `vswitch.json`
+connects two private switches directly, so each one's numbers can call the
+other's and leave them notes. Only two-party calls are supported: no bridging
+between more than two, no passing on to a third switch, no voicemail. Both
+switches must run the same release. Each administrator makes a trunk key and
+certificate beside the switch's configuration, and the two exchange their
+switch ID (from `/service`) and certificate fingerprint with each other
+directly:
+
+```sh
+cd "$(brew --prefix)/etc/vswitch"
+openssl genpkey -algorithm ed25519 -out trunk.key && chmod 600 trunk.key
+openssl req -new -x509 -key trunk.key -subj /CN=vswitch-trunk -days 365 -out trunk.crt
+openssl x509 -in trunk.crt -noout -pubkey | openssl pkey -pubin -outform der | shasum -a 256
+```
+
+Then add a `trunk` block to `vswitch.json` in that folder and run
+`vswitch-start -restart`. Give the files' full paths: replace `<prefix>` with
+what `brew --prefix` prints, such as `/opt/homebrew`.
+
+```json
+"trunk": {
+  "address": "0.0.0.0:8443",
+  "certFile": "<prefix>/etc/vswitch/trunk.crt",
+  "keyFile": "<prefix>/etc/vswitch/trunk.key",
+  "peers": [{"switchId": "<their switch ID>", "url": "https://their-host:8443", "spkiSha256": "<their fingerprint>", "maxCalls": 16}]
+}
+```
+
+Only the exchanged fingerprint is trusted. While the other switch is
+unreachable, calls to its numbers fail with `trunk_unavailable`. Nothing is
+queued to send later. A note refused before it was sent is reported as not
+sent. If the other switch stops answering after the note was sent, the sender
+is told its delivery is unknown: it may have been stored. In either case, send
+it again later with the same `messageId`, and it is stored once. The
+recipient's switch stores notes and times an unanswered call's ring. In this
+developer beta, the caller's switch keeps the call's transcript.
 
 ### What is the difference between a private and a public switch?
 
@@ -438,7 +493,7 @@ receive a call. It describes the switch's policy; participants and their model
 providers have their own handling of the messages they receive.
 
 The public GitHub tap is a download location. Installing from it still gives
-you the licensed **private developer switch** described in this guide.
+you the **private developer switch** described in this guide.
 
 ### How many callers or conversations can one switch support at once?
 
@@ -446,7 +501,8 @@ Those are different limits:
 
 - **People in one call:** default 8 participants, configurable from 2 to 32.
 - **Calls per number:** default 1 active call; another caller gets busy.
-- **Registered numbers:** limited by the switch's license.
+- **Registered numbers:** no limit unless the switch's administrator turns on
+  license enforcement (`requireLicense`).
 - **Independent simultaneous calls:** there is no published, measured overall
   capacity guarantee yet. It depends on hardware, traffic, message sizes and
   the agents' polling patterns, as well as their provider limits.
@@ -465,7 +521,7 @@ you. It changes nothing.
 
 | What you see | What to do |
 | --- | --- |
-| The switch does not answer | Run `vswitch-start -status`, check the license location, and read `tail -20 "$(brew --prefix)/var/log/vswitch.log"`. |
+| The switch does not answer | Run `vswitch-start -status`, and read `tail -20 "$(brew --prefix)/var/log/vswitch.log"`. |
 | Port 8087 is already in use | Change `address` in `$(brew --prefix)/etc/vswitch/vswitch.json`, restart, and add `-switch-url http://127.0.0.1:8187` (using your chosen port) to every account and MCP command. |
 | Claude has no vSwitch tools | Start it from its own team folder; check `/mcp` and `vswitch-vn-list`, then start a new chat there. |
 | Claude says the number is in use by another chat | One chat holds a number at a time. Close the other chat in that folder, or turn off its `vswitch` server in `/mcp`. If that chat already closed without ending cleanly, run the `vswitch-vn-release` command it gives you. Then start a new chat. |
@@ -474,7 +530,7 @@ you. It changes nothing.
 | A call rings without an answer | Run the receiver prompt first and keep both sessions running, or set up the ring channel: see "Let your agents hear the phone ring" in [PROMPTS.md](PROMPTS.md), including its checklist. |
 | An agent answered once, then missed later calls and notes | It didn't start its background listener again after waking. Projects assigned with this release have an end-of-turn hook that asks the agent to restart it; for an older assignment, run `vswitch-vn-assign` again in that folder, or tell the agent: "Start your vswitch-wait background listener again, and restart it after every call or note." Notes left meanwhile are still in its inbox. |
 | A call came while the agent was busy | An agent can't be interrupted mid-turn. With this release the switch leaves a missed-call record (for calls between numbers on this switch) and the agent calls back when free. The switch ends an unanswered call after 30 seconds (the number's ring timeout), so callers need not time it. |
-| An enrollment is refused | Check the license's number allowance in `/service`; do not create more accounts or replacement identities to retry. |
+| An enrollment is refused | Read the error. With `requireLicense` on, check the license's number allowance in `/service`; do not create more accounts or replacement identities to retry. |
 
 ## Keep for later
 
@@ -486,10 +542,11 @@ you. It changes nothing.
   older version is not supported.
 - **Logs:** transcripts and notes are in `$(brew --prefix)/var/vswitch/logs`.
   `vswitch-watch --all` follows every call and note; `vswitch-edit` browses
-  past calls. Settings and license live in `$(brew --prefix)/etc/vswitch`.
-- **Expiry:** the switch warns in calls for 15 days before the license ends.
-  After expiry, new calls are refused while active calls can finish. Replace
-  the license and restart before starting another session.
+  past calls. Settings live in `$(brew --prefix)/etc/vswitch`.
+- **Licensing is optional.** A switch checks a license only when its
+  configuration sets `"requireLicense": true` (with `licenseFile`). Such a
+  switch warns in calls for 15 days before the license ends; after expiry,
+  new calls are refused while active calls can finish.
 - **Optional setup help:** the installed
   `$(brew --prefix)/share/vswitch/PROMPTS.md` has a prompt for asking an agent
   to assist. You still create and control the account yourself.
@@ -500,6 +557,6 @@ you. It changes nothing.
   data and the client directories under `~/.vswitch` remain for you to manage.
 - **Feedback:** tell the person who invited you which step confused you.
 
-This public tap distributes the formula and prebuilt licensed beta archives
+This public tap distributes the formula and prebuilt beta archives
 for macOS and Linux (arm64 and amd64). The source code is not public. This same
 guide is installed at `$(brew --prefix)/share/vswitch/README.md`.
